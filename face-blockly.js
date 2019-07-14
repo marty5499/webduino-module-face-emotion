@@ -4,7 +4,7 @@
   var MODEL_EMOTION_URL = 'https://127.0.0.1:8080/mobilenetv1_models/model.json';
 
   MODEL_URL = "https://marty5499.github.io/webduino-module-face-emotion/weights/";
-  MODEL_URL = "https://marty5499.github.io/webduino-module-face-emotion/mobilenetv1_models/model.json";
+  MODEL_URL = "https://marty5499.github.io/webduino-module-face-emotion/emotion/model.json";
 
   window.faceAPI = new webduino.module.face(MODEL_URL, MODEL_EMOTION_URL);
 
