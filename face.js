@@ -76,7 +76,7 @@
         this.processing = false;
         if (detectEmotion) {
           var e = getEmotion(image, descriptor.detection.box);
-          console.log("emotion:", e);
+          //console.log("emotion:", e);
           return e;
         }
         if (typeof descriptor.descriptor == 'undefined') {
