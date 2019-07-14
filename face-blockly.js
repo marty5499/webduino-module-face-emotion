@@ -1,10 +1,10 @@
 +(async function (window, webduino) {
   'use strict';
   var MODEL_URL = "https://127.0.0.1:8080/weights/";
-  var MODEL_EMOTION_URL = 'https://127.0.0.1:8080/mobilenetv1_models/model.json';
+  var MODEL_EMOTION_URL = 'https://127.0.0.1:8080/emotion/model.json';
 
   MODEL_URL = "https://marty5499.github.io/webduino-module-face-emotion/weights/";
-  MODEL_URL = "https://marty5499.github.io/webduino-module-face-emotion/emotion/model.json";
+  MODEL_EMOTION_URL = "https://marty5499.github.io/webduino-module-face-emotion/emotion/model.json";
 
   window.faceAPI = new webduino.module.face(MODEL_URL, MODEL_EMOTION_URL);
 
