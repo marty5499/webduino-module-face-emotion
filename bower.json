@@ -1,0 +1,19 @@
+{
+  "name": "webduino-module-face",
+  "description": "face-api Module for Webduino",
+  "main": "face.js",
+  "authors": "",
+  "license": "MIT",
+  "keywords": [
+    "arduino",
+    "webduino",
+    "face-api"
+  ],
+  "ignore": [
+    "**/.*",
+    "node_modules",
+    "bower_components",
+    "test",
+    "tests"
+  ]
+}

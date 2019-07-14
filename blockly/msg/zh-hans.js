@@ -1,0 +1,1 @@
+MSG.catFace = "人臉辨識";

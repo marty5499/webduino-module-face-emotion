@@ -1,0 +1,20 @@
+{
+  "name": "webduino-module-face",
+  "version": "1.0.0",
+  "description": "FaceAPI Module for Webduino",
+  "main": "face.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "",
+  "license": "MIT",
+  "keywords": [
+    "arduino",
+    "webduino",
+    "faceAPI"
+  ],
+  "dependencies": {
+    "webduino-js": "0.x"
+  }
+}
+
