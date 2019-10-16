@@ -1,0 +1,58 @@
+<category id="catFace">
+  <block type="face_load">
+  </block>
+  <block type="face_get_camera">
+  </block>
+  <block type="face_get_canvas"></block>
+  <block type="variables_set">
+    <field name="VAR">face</field>
+    <value name="VALUE">
+      <block type="face_get_description">
+        <value name="description">
+          <block type="text">
+            <field name="TEXT">https://marty5499.github.io/webduino-module-face-emotion/sample1.jpg</field>
+          </block>
+        </value>
+      </block>
+    </value>
+  </block>
+  <block type="demo_show_text">
+    <value name="show_">
+      <block type="face_get_description">
+        <value name="description">
+          <block type="face_get_canvas">
+            <field name="camera">camera</field>
+          </block>
+        </value>
+      </block>
+    </value>
+  </block>
+  <block type="demo_show_text">
+    <value name="show_">
+      <block type="face_get_emotion">
+        <value name="emotion">
+          <block type="face_get_canvas">
+            <field name="camera">camera</field>
+          </block>
+        </value>
+      </block>
+    </value>
+  </block>
+  <block type="variables_set">
+    <field name="VAR">diff</field>
+    <value name="VALUE">
+      <block type="face_get_euclideanDistance">
+        <value name="faceA">
+          <block type="variables_get">
+            <field name="VAR">變數</field>
+          </block>
+        </value>
+        <value name="faceB">
+          <block type="variables_get">
+            <field name="VAR">變數</field>
+          </block>
+        </value>
+      </block>
+    </value>
+  </block>
+</category>
