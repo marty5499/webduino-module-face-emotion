@@ -38,6 +38,28 @@
       </block>
     </value>
   </block>
+  <block type="demo_show_text">
+    <value name="show_">
+      <block type="face_get_age">
+        <value name="age">
+          <block type="face_get_canvas">
+            <field name="camera">camera</field>
+          </block>
+        </value>
+      </block>
+    </value>
+  </block>
+  <block type="demo_show_text">
+    <value name="show_">
+      <block type="face_get_gender">
+        <value name="gender">
+          <block type="face_get_canvas">
+            <field name="camera">camera</field>
+          </block>
+        </value>
+      </block>
+    </value>
+  </block>
   <block type="variables_set">
     <field name="VAR">diff</field>
     <value name="VALUE">

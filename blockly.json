@@ -1,5 +1,14 @@
 {
-  "types": ["face_get_description", "face_get_euclideanDistance", "face_get_camera"],
+  "types": [
+    "face_load",
+    "face_get_canvas",
+    "face_get_emotion",
+    "face_get_age",
+    "face_get_gender",
+    "face_get_description",
+    "face_get_euclideanDistance",
+    "face_get_camera"
+  ],
   "category": "catPlus",
   "scripts": [
     "blockly/blocks.js",
@@ -7,10 +16,9 @@
   ],
   "dependencies": [
     "camera.js",
+    "webcam.js",
     "face-api.js",
     "face.js",
-    "tfjs@0.14.1.js",
-    "emotion.js",
     "face-blockly.js"
   ],
   "msg": "blockly/msg",
