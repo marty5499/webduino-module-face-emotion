@@ -157,7 +157,6 @@ var Camera = (function () {
     }
 
     onCanvas(eleOrId, callback) {
-      window.hh = 1;
       var self = this;
       var canvas = self.getEle(eleOrId);
       self.canvas = canvas;
@@ -172,12 +171,9 @@ var Camera = (function () {
             window.remoteVideo = self.video = video;
             video.onloadeddata = function () {
               var loop = function () {
-                var ctx = canvas.getContext('2d');
-                var vw = video.videoWidth;
-                var vh = video.videoHeight;
                 self.rotateImg(video, canvas, self.rotate, true);
                 if (typeof callback == 'function') {
-                  callback(self.canvas, video);
+                  callback(canvas, video);
                 }
                 requestAnimationFrame(loop);
               }
@@ -199,7 +195,6 @@ var Camera = (function () {
             ele.setAttribute("crossOrigin", 'Anonymous');
             ele.style.display = 'none';
             document.getElementsByTagName("body")[0].append(ele);
-            var ctx = canvas.getContext('2d');
             var loop = function () {
               self.rotateImg(ele, canvas, self.rotate, false);
               if (typeof callback == 'function') {
@@ -236,7 +231,7 @@ var Camera = (function () {
       var ch = c.height;
       var iRatio = parseInt(100 * iw / ih) / 100;
       var cRatio = parseInt(100 * cw / ch) / 100;
-      this.ctx.save();
+      ctx.save();
       if (cw != ch && (cRatio != iRatio) && !this.autoScale) {
         ctx.translate(cw / 2, ch / 2);
         ctx.rotate(degrees * 0.0174532925199432957);
@@ -248,11 +243,12 @@ var Camera = (function () {
         ctx.translate(-cw / 2, -ch / 2);
         this.drawImg(i, c, isVideo);
       }
-      this.ctx.restore();
+      ctx.restore();
     }
 
 
     drawImg(i, c, isVideo) {
+      var ctx = c.getContext("2d");
       var iw = isVideo ? i.videoWidth : i.naturalWidth;
       var ih = isVideo ? i.videoHeight : i.naturalHeight;
       var cw = c.width;
@@ -267,7 +263,7 @@ var Camera = (function () {
         sy = (ih - (iw * cRatio)) / 2;
         ih = iw * cRatio;
       }
-      this.ctx.drawImage(i, sx, sy, iw, ih, 0, 0, cw, ch);
+      ctx.drawImage(i, sx, sy, iw, ih, 0, 0, cw, ch);
     }
 
     buttonTrigger(ele, callback) {

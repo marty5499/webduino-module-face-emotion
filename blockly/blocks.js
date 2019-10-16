@@ -29,12 +29,37 @@ Blockly.Blocks['face_get_description'] = {
   }
 };
 
-
 Blockly.Blocks['face_get_emotion'] = {
   init: function () {
     this.appendValueInput("emotion")
       .setCheck("String")
       .appendField("取得臉部情緒：");
+    this.setInputsInline(false);
+    this.setOutput(true, null);
+    this.setColour(230);
+    this.setTooltip('');
+    this.setHelpUrl('https://webduino.io/');
+  }
+};
+
+Blockly.Blocks['face_get_age'] = {
+  init: function () {
+    this.appendValueInput("age")
+      .setCheck("String")
+      .appendField("取得年齡：");
+    this.setInputsInline(false);
+    this.setOutput(true, null);
+    this.setColour(230);
+    this.setTooltip('');
+    this.setHelpUrl('https://webduino.io/');
+  }
+};
+
+Blockly.Blocks['face_get_gender'] = {
+  init: function () {
+    this.appendValueInput("gender")
+      .setCheck("String")
+      .appendField("取得性別：");
     this.setInputsInline(false);
     this.setOutput(true, null);
     this.setColour(230);
