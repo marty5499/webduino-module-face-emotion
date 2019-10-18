@@ -42,11 +42,14 @@
     Module.call(this);
     this.MODEL_URL = MODEL_URL;
     this.processing = false;
-    this.lastFaceDescriptor = [];
     this.detector = SSD_MOBILENETV1;
     this.lastFaceExpression = "";
     this.lastFaceDescriptor = [];
-    this.lastAgeAndGender = {};
+    this.lastAgeAndGender = {
+      age: 0,
+      gender: '',
+      genderProbability: 0
+    };
     this.predictedAges = [];
 
     // for debug
@@ -93,12 +96,12 @@
    * @returns {array | string}
    */
   proto.getDescription = async function (image, detectEmotion = false) {
-    if (image == null) {
-      return [];
-    }
-    if (this.processing) {
+    if (this.processing
+      || !image
+      || (image instanceof HTMLVideoElement && (image.paused || image.ended))) {
       return detectEmotion ? this.lastFaceExpression : this.lastFaceDescriptor;
     }
+
     this.processing = true;
 
     // 處理 input
@@ -148,9 +151,14 @@
 
       return data;
     } catch(e) {
-      console.log("face detect Error:", e);
+      console.warn("face getDescription Error:", e);
       this.processing = false;
-      return [];
+      if (detectEmotion) {
+        this.lastFaceExpression = "";
+      } else {
+        this.lastFaceDescriptor = [];
+      }
+      return detectEmotion ? this.lastFaceExpression : this.lastFaceDescriptor;
     }
   };
 
@@ -163,12 +171,12 @@
   };
 
   proto.getEmotion = async function (image) {
-    if (image == null) {
-      return [];
-    }
-    if (this.processing) {
+    if (this.processing
+      || !image
+      || (image instanceof HTMLVideoElement && (image.paused || image.ended))) {
       return this.lastFaceExpression;
     }
+
     this.processing = true;
 
     // 處理 input
@@ -201,19 +209,20 @@
       return data;
 
     } catch(e) {
-      console.log("face expression detect Error:", e);
+      console.warn("face emotion detect Error:", e);
       this.processing = false;
-      return [];
+      this.lastFaceExpression = "";
+      return this.lastFaceExpression;
     }
   };
 
   proto.getAgeAndGender = async function (image) {
-    if (image == null) {
-      return [];
-    }
-    if (this.processing) {
+    if (this.processing
+      || !image
+      || (image instanceof HTMLVideoElement && (image.paused || image.ended))) {
       return this.lastAgeAndGender;
     }
+
     this.processing = true;
 
     // 處理 input
@@ -247,9 +256,14 @@
       return data || {};
 
     } catch(e) {
-      console.log("face expression detect Error:", e);
+      console.warn("face age and gender detect Error:", e);
       this.processing = false;
-      return [];
+      this.lastAgeAndGender = {
+        age: 0,
+        gender: '',
+        genderProbability: 0
+      };
+      return this.lastAgeAndGender;
     }
   };
 
