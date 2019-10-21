@@ -1,18 +1,19 @@
 Blockly.JavaScript['face_load'] = function (block) {
   // TinyYolov2Model 官方已逐漸不使用，已不在源碼中提供 weights 資料，而改用 tiny_face_detector 取代。
   // tiny_face_detector 是基於 TinyYolov2Model 上，優化改進而來的 model。
+  // 拿掉 ssd_mobilenetv1，在 window OS 下，若未載入 tiny_face_detector 時，會發生只能偵測半邊畫面的情況。
   var dropdown_model = block.getFieldValue('model');
   var MODEL_TYPE = {
-    "0": 'ssd_mobilenetv1',
+    "0": '',
     "1": 'tiny_face_detector',
-    "2": '', // TinyYolov2Model，相容舊的寫法。空值，使用預設的 model (ssd_mobilenetv1)
+    "2": '', // TinyYolov2Model，相容舊的寫法。空值，使用預設的 model
     "3": 'mtcnn'
   };
   var code;
   if (MODEL_TYPE[dropdown_model]) {
     code = `await faceAPI.loadModel("${MODEL_TYPE[dropdown_model]}");\n`;
   } else {
-    code = `await faceAPI.loadModel();\n`; // 相容舊的寫法。空值，使用預設的 model (ssd_mobilenetv1)
+    code = `await faceAPI.loadModel();\n`;
   }
   return code;
 };
