@@ -3,10 +3,10 @@ Blockly.Blocks['face_load'] = {
     this.appendDummyInput()
       .appendField("載入人臉模型檔案")
       .appendField(new Blockly.FieldDropdown([
-        ["SSDMobileNetV1", "0"],
         ["TinyFaceDetector", "1"],
-        ["TinyYolov2Model", "2"],
-        ["MtCNN", "3"]
+        ["MtCNN", "3"],
+        ["SSDMobileNetV1", "0"],
+        ["TinyYolov2Model", "2"]
       ]), "model");
     this.setPreviousStatement(true, null);
     this.setNextStatement(true, null);

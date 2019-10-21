@@ -1,5 +1,6 @@
 <category id="catFace">
   <block type="face_load">
+    <field name="model">1</field>
   </block>
   <block type="face_get_camera">
   </block>

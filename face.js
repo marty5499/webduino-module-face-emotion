@@ -42,7 +42,7 @@
     Module.call(this);
     this.MODEL_URL = MODEL_URL;
     this.processing = false;
-    this.detector = SSD_MOBILENETV1;
+    this.detector = TINY_FACE_DETECTOR;
     this.lastFaceExpression = "";
     this.lastFaceDescriptor = [];
     this.lastAgeAndGender = {
@@ -271,22 +271,23 @@
    * 原來是載入所有的 model
    * 從 2019-10 後，調整為載入指定的 model，但且設定為接下來使用的 model
    */
-  proto.loadModel = async function (modelName) {
+  proto.loadModel = async function (modelName = TINY_FACE_DETECTOR) {
     console.log("load face model...", modelName);
     switch (modelName) {
-      case TINY_FACE_DETECTOR:
-        await faceapi.loadTinyFaceDetectorModel(this.MODEL_URL);
-        this.detector = TINY_FACE_DETECTOR;
-        break;
-
       case MTCNN:
         await faceapi.loadMtcnnModel(this.MODEL_URL);
         this.detector = MTCNN;
         break;
 
-      default:
+      case SSD_MOBILENETV1:
         await faceapi.loadSsdMobilenetv1Model(this.MODEL_URL);
         this.detector = SSD_MOBILENETV1;
+        break;
+
+      case TINY_FACE_DETECTOR:
+      default:
+        await faceapi.loadTinyFaceDetectorModel(this.MODEL_URL);
+        this.detector = TINY_FACE_DETECTOR;
         break;
     }
     await faceapi.loadFaceExpressionModel(this.MODEL_URL);
@@ -301,13 +302,6 @@
       return this.detectorOptions;
     }
     switch (this.detector) {
-      case TINY_FACE_DETECTOR:
-        this.detectorOptions = new faceapi.TinyFaceDetectorOptions({
-          inputSize: this.inputSize,
-          scoreThreshold: this.scoreThreshold
-        });
-        break;
-
       case MTCNN:
         this.detectorOptions = new faceapi.MtcnnOptions({
           minFaceSize: this.minFaceSize
@@ -315,9 +309,16 @@
         break;
 
       case SSD_MOBILENETV1:
-      default:
         this.detectorOptions = new faceapi.SsdMobilenetv1Options({
           minConfidence: this.minConfidence
+        });
+        break;
+
+      case TINY_FACE_DETECTOR:
+      default:
+        this.detectorOptions = new faceapi.TinyFaceDetectorOptions({
+          inputSize: this.inputSize,
+          scoreThreshold: this.scoreThreshold
         });
         break;
     }
