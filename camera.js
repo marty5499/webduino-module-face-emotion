@@ -3,23 +3,48 @@ var Camera = (function () {
   const wsCam = 1;
   const jpgCam = 2;
   const imgStreamCam = 3;
+  const videoStreamCam = 4;
+  const channel = 5; // webrtc channel
 
   class Camera {
     // webCam: 0,1,2
     // jpgCam: http://192.168.0.11/jpg
     // wsCam:  ws://192.168.43.110:8889/rws/ws
+    // videoCam: http://127.0.0.1:9966/walkman.mp4
     constructor(camType) {
       if (arguments.length == 0) {
         camType = 0;
       }
+      this.cnt = 0;
+      this.fitParentElement = false;
+      this.getImageFailure = false;
+      this.onCanvasCallbackList = [];
+      this.onReadyCallbackList = [];
       this.setCamType(camType);
       this.setFlip(false);
       this.autoScale = false;
       this.setRotate(0);
+      var flipStyle = document.createElement('style')
+      this.id = "canvas_" + ("" + Math.random()).substring(2);
+      flipStyle.innerHTML = "." + this.id + " {-moz-transform: scaleX(-1);-o-transform: scaleX(-1);-webkit-transform: scaleX(-1);transform: scaleX(-1);filter: FlipH;-ms-filter: 'FlipH';}";
+      document.body.appendChild(flipStyle);
+    }
+
+    onReady(cb) {
+      this.onReadyCallbackList.push(cb);
+    }
+
+    setFitToContainer(fit) {
+      this.fitParentElement = fit;
     }
 
     setAutoScale(autoScale) {
       this.autoScale = autoScale;
+      return this;
+    }
+
+    getCanvas() {
+      return this.canvas;
     }
 
     setCamType(camType) {
@@ -28,8 +53,12 @@ var Camera = (function () {
         this.URL = camType;
         if (camType.indexOf("ws://") == 0) {
           this.camType = wsCam;
-        } else if (camType.indexOf("http://") == 0) {
-          if (camType.indexOf(":81/stream") > 0) {
+        } else if (camType.indexOf("channel://") == 0) {
+          this.camType = channel;
+        } else if (camType.indexOf("http") == 0 || camType.indexOf(".mp4") > 0) {
+          if (camType.indexOf(".mp4") > 0) {
+            this.camType = videoStreamCam;
+          } else if (camType.indexOf(":81/stream") > 0) {
             this.camType = imgStreamCam;
           } else {
             this.camType = jpgCam;
@@ -42,6 +71,24 @@ var Camera = (function () {
       }
     }
 
+    async start(cb) {
+      var self = this;
+      return new Promise((resolve, reject) => {
+        self.onCanvas(function () {
+          self.onCanvasCallbackList.pop();
+          resolve("ready2go");
+        });
+      });
+    }
+
+    setCanvas(canvas) {
+      if (typeof canvas == 'string') {
+        canvas = document.getElementById(canvas);
+      }
+      this.canvas = canvas;
+      return this;
+    }
+
     setRotate(degrees) {
       this.rotate = degrees;
       return this;
@@ -50,6 +97,10 @@ var Camera = (function () {
     setFlip(bool) {
       this.flip = bool;
       return this;
+    }
+
+    getFlip() {
+      return this.flip;
     }
 
     list(callback) {
@@ -62,12 +113,14 @@ var Camera = (function () {
     enumerateDevices(cb) {
       var self = this;
       return new Promise(function (resolve, reject) {
-        navigator.mediaDevices.enumerateDevices()
-          .then(function (o) {
-            self.gotDevices(self, o);
-            if (cb) cb();
-            resolve();
-          }).catch(self.handleError);
+        navigator.mediaDevices.getUserMedia({ video: true }).then(function (mediaStream) {
+          navigator.mediaDevices.enumerateDevices()
+            .then(function (o) {
+              self.gotDevices(self, o);
+              if (cb) cb();
+              resolve();
+            }).catch(self.handleError);
+        });
       });
     }
 
@@ -111,10 +164,15 @@ var Camera = (function () {
             console.log('Error: ', error);
           });
           break;
-          /* WebRTC */
+          /* WebRTC RPi*/
         case wsCam:
           console.log("WebRTC:", this.camType);
           ConnectWebSocket(this.URL);
+          break;
+          /* WebRTC*/
+        case channel:
+          console.log("WebRTC channel:", this.camType);
+          this.URL = this.URL.substring(10);
           break;
         case jpgCam:
           // http://192.168.43.201:9966/ok.png
@@ -126,6 +184,11 @@ var Camera = (function () {
           console.log("imgStreamCam:", this.camType);
           console.log("URL:", this.URL);
           break;
+        case videoStreamCam:
+          // http://192.168.43.201:9966/walkman.mp4
+          console.log("videoStreamCam:", this.camType);
+          console.log("URL:", this.URL);
+          break;
       }
     }
 
@@ -134,47 +197,167 @@ var Camera = (function () {
         eleOrId : document.getElementById(eleOrId);
     }
 
-    onImage(imageId_or_ele, callback) {
-      var self = this;
-      var image = this.getEle(imageId_or_ele);
-      image.setAttribute("crossOrigin", 'Anonymous');
+    getDelayTime() {
       var camSnapshotDelay = 0.5;
       var param = this.URL.indexOf("?");
       if (param > 0) {
         camSnapshotDelay = parseFloat(this.URL.substring(param + 1));
         this.URL = this.URL.substring(0, param);
       }
-      camSnapshotDelay = camSnapshotDelay * 1000;
-      image.src = this.URL;
-      image.onload = function () {
-        setTimeout(function () {
-          if (typeof callback == 'function') {
-            callback(image);
+      return camSnapshotDelay * 1000;
+    }
+
+    addImageProcess(img, src) {
+      return new Promise((resolve, reject) => {
+        img.setAttribute("crossOrigin", 'Anonymous');
+        img.onload = () => resolve(img);
+        img.onerror = function () {
+          console.log("camera.js: Error occurred while loading image,retry...");
+          img.src = src + "?" + Math.random();
+        }
+        try {
+          img.src = src + "?" + Math.random();
+        } catch (e) {
+          console.log("camera.js: img.src err:", e)
+        }
+      })
+    }
+
+    async loop(img, camSnapshotDelay, callback) {
+      var self = this;
+      setTimeout(async function () {
+        if (self.onCanvasCallbackList.length > 0) {
+          try {
+            img = await self.addImageProcess(img, self.URL);
+            callback(img);
+            img.onload = null;
+            img.onerror = null;
+            var clone = img.cloneNode(true);
+            img.parentNode.replaceChild(clone, img);
+            img = clone;
+            self.loop(img, camSnapshotDelay, callback);
+          } catch (e) {
+            console.log(e);
           }
-          image.src = self.URL + "?" + Math.random();
-        }, camSnapshotDelay);
-      }
+        }
+      }, camSnapshotDelay);
+    }
+
+    async onImage(imageId_or_ele, callback) {
+      var img = this.getEle(imageId_or_ele);
+      var camSnapshotDelay = this.getDelayTime();
+      this.loop(img, camSnapshotDelay, callback);
     }
 
     onCanvas(eleOrId, callback) {
       var self = this;
+      //check if it's callback function
+      if (arguments.length == 1 &&
+        typeof eleOrId == 'function') {
+        callback = eleOrId;
+        eleOrId = this.getCanvas();
+      }
+      if (typeof callback == 'undefined') {
+        callback = function () {};
+      }
+      this.onCanvasCallbackList.push(callback);
       var canvas = self.getEle(eleOrId);
+      if (this.flip) {
+        canvas.classList.add(this.id);
+      }
+      if (self.fitParentElement) {
+        self.fitToContainer(canvas);
+      }
       self.canvas = canvas;
       self.ctx = canvas.getContext("2d");
 
       this.buttonTrigger(canvas, function () {
         self.startCam();
         switch (self.camType) {
+          case channel:
+            const peers = {}
+            const ROOM_ID = self.URL;
+            const socket = io.connect('https://webrtc.webduino.io/')
+
+            // (1)
+            const myPeer = new Peer(undefined, {
+              host: 'peerjs.webduino.io',
+              path: '/myapp',
+              proxied: true
+            })
+
+            // (2)
+            myPeer.on('open', id => {
+              socket.emit('join-room', ROOM_ID, id)
+            })
+
+            // (3) 取得已加入的用戶
+            myPeer.on('call', call => {
+              //將本身的 stream 送給線上用戶
+              const video = document.createElement('video')
+              call.answer(video.stream);
+              //新進來的用戶送過來的串流
+              call.on('stream', userVideoStream => {
+                //console.log("Streaming...");
+                const video = document.createElement('video')
+                video.srcObject = userVideoStream
+                video.addEventListener('loadedmetadata', () => {
+                  video.play();
+                })
+
+                function onFrame() {
+                  window.requestAnimationFrame(onFrame);
+                  self.rotateImg(video, canvas, self.rotate, true);
+                  if (self.onCanvasCallbackList.length > 0) {
+                    for (var i = 0; i < self.onCanvasCallbackList.length; i++) {
+                      self.onCanvasCallbackList[i](self.canvas, video, i, self.onCanvasCallbackList.length);
+                    }
+                  }
+                }
+                onFrame();
+              })
+            })
+
+            //有新進來的用戶
+            socket.on('user-connected', userId => {
+              console.log("socket-user-connected:", userId);
+              const call = myPeer.call(userId, stream)
+              call.on('stream', userVideoStream => {
+                //addVideoStream(video, userVideoStream)
+              })
+              call.on('close', () => {
+                video.remove()
+              })
+              peers[userId] = call
+            })
+
+            //線上用戶斷線
+            socket.on('user-disconnected', userId => {
+              if (peers[userId]) peers[userId].close()
+            })
+
+            break;
           case webCam:
           case wsCam:
             var video = self.createVideo();
             window.remoteVideo = self.video = video;
             video.onloadeddata = function () {
+              var nowTime = Date.now();
+              var lastTime = nowTime;
               var loop = function () {
-                self.rotateImg(video, canvas, self.rotate, true);
-                if (typeof callback == 'function') {
-                  callback(canvas, video);
+                lastTime = nowTime;
+                if (self.cnt++ == 30 /* skip 30 frame*/ ) {
+                  for (var i = 0; i < self.onReadyCallbackList.length; i++) {
+                    self.onReadyCallbackList[i]();
+                  }
                 }
+                self.rotateImg(video, canvas, self.rotate, true);
+                if (self.onCanvasCallbackList.length > 0) {
+                  for (var i = 0; i < self.onCanvasCallbackList.length; i++) {
+                    self.onCanvasCallbackList[i](self.canvas, video, i, self.onCanvasCallbackList.length);
+                  }
+                }
+                nowTime = Date.now();
                 requestAnimationFrame(loop);
               }
               requestAnimationFrame(loop);
@@ -182,12 +365,18 @@ var Camera = (function () {
             break;
           case jpgCam:
             var ele = document.createElement('img');
+            ele.setAttribute("style", "display:none");
+            var body = document.getElementsByTagName("body")[0];
+            body.append(ele);
             self.onImage(ele, function (img) {
-              self.rotateImg(ele, canvas, self.rotate, false);
-              if (typeof callback == 'function') {
-                callback(canvas, ele);
+              self.rotateImg(img, canvas, self.rotate, false);
+              for (var i = 0; i < self.onCanvasCallbackList.length; i++) {
+                self.onCanvasCallbackList[i](canvas, video);
               }
             });
+            for (var i = 0; i < self.onReadyCallbackList.length; i++) {
+              self.onReadyCallbackList[i]();
+            }
             break;
           case imgStreamCam:
             var ele = document.createElement('img');
@@ -197,12 +386,74 @@ var Camera = (function () {
             document.getElementsByTagName("body")[0].append(ele);
             var loop = function () {
               self.rotateImg(ele, canvas, self.rotate, false);
-              if (typeof callback == 'function') {
-                callback(canvas, ele);
+              if (self.onCanvasCallbackList.length > 0) {
+                for (var i = 0; i < self.onCanvasCallbackList.length; i++) {
+                  self.onCanvasCallbackList[i](self.canvas, video);
+                }
               }
               requestAnimationFrame(loop);
             }
             requestAnimationFrame(loop);
+            for (var i = 0; i < self.onReadyCallbackList.length; i++) {
+              self.onReadyCallbackList[i]();
+            }
+            break;
+          case videoStreamCam:
+            var video = self.createVideo();
+            console.log("start videoStream Cam");
+            window.remoteVideo = self.video = video;
+            var sourceMP4 = document.createElement("source");
+            video.appendChild(sourceMP4);
+            sourceMP4.type = "video/mp4";
+            sourceMP4.src = self.URL;
+            //
+            video.onloadeddata = function () {
+              var loop = function () {
+                for (var i = 0; i < self.onReadyCallbackList.length; i++) {
+                  self.onReadyCallbackList[i]();
+                }
+                self.rotateImg(video, canvas, self.rotate, true);
+                if (self.onCanvasCallbackList.length > 0) {
+                  for (var i = 0; i < self.onCanvasCallbackList.length; i++) {
+                    self.onCanvasCallbackList[i](canvas, video);
+                  }
+                }
+                requestAnimationFrame(loop);
+              }
+              requestAnimationFrame(loop);
+            }
+            video.autoplay = 'autoplay';
+            video.muted = 'true';
+            video.play();
+            break;
+          case videoStreamCam:
+            var video = self.createVideo();
+            console.log("start videoStream Cam");
+            window.remoteVideo = self.video = video;
+            var sourceMP4 = document.createElement("source");
+            video.appendChild(sourceMP4);
+            sourceMP4.type = "video/mp4";
+            sourceMP4.src = self.URL;
+            //
+            video.onloadeddata = function () {
+              var loop = function () {
+                for (var i = 0; i < self.onReadyCallbackList.length; i++) {
+                  self.onReadyCallbackList[i]();
+                }
+                var ctx = canvas.getContext('2d');
+                self.rotateImg(video, canvas, self.rotate, true);
+                if (self.onCanvasCallbackList.length > 0) {
+                  for (var i = 0; i < self.onCanvasCallbackList.length; i++) {
+                    self.onCanvasCallbackList[i](self.canvas, video);
+                  }
+                }
+                requestAnimationFrame(loop);
+              }
+              requestAnimationFrame(loop);
+            }
+            video.autoplay = 'autoplay';
+            video.muted = 'true';
+            video.play();
             break;
         }
       });
@@ -217,9 +468,27 @@ var Camera = (function () {
       });
     }
 
+    fitToContainer(canvas) {
+      // Make it visually fill the positioned parent
+      canvas.style.width = '100%';
+      canvas.style.height = '100%';
+      // ...then set the internal size to match
+      canvas.width = canvas.offsetWidth;
+      canvas.height = canvas.offsetHeight;
+    }
+
     createVideo() {
+      var canvas = this.getCanvas();
+      //canvas.setAttribute('style', 'position:relative;z-index:1;');
       var video = document.createElement('video');
+      video.setAttribute('width', canvas.width);
+      video.setAttribute('height', canvas.height);
+      video.setAttribute('style', 'position:absolute;z-index:0;opacity:0');
+      video.style.top = canvas.offsetTop + 'px';
+      video.style.left = canvas.offsetLeft + 'px';
+      canvas.parentNode.insertBefore(video, canvas.nextSibling);
       video.autoplay = true;
+      this.video = video;
       return video;
     }
 
@@ -231,8 +500,8 @@ var Camera = (function () {
       var ch = c.height;
       var iRatio = parseInt(100 * iw / ih) / 100;
       var cRatio = parseInt(100 * cw / ch) / 100;
-      ctx.save();
-      if (cw != ch && (cRatio != iRatio) && !this.autoScale) {
+      this.ctx.save();
+      if (cw != ch && (cRatio != iRatio) && !this.autoScale && !isVideo) {
         ctx.translate(cw / 2, ch / 2);
         ctx.rotate(degrees * 0.0174532925199432957);
         ctx.translate(-ch / 2, -cw / 2);
@@ -243,12 +512,18 @@ var Camera = (function () {
         ctx.translate(-cw / 2, -ch / 2);
         this.drawImg(i, c, isVideo);
       }
-      ctx.restore();
+      this.ctx.restore();
+    }
+
+    stop() {
+      this.video.srcObject.getTracks().forEach(function (track) {
+        track.stop();
+      });
+      this.video = null;
     }
 
 
     drawImg(i, c, isVideo) {
-      var ctx = c.getContext("2d");
       var iw = isVideo ? i.videoWidth : i.naturalWidth;
       var ih = isVideo ? i.videoHeight : i.naturalHeight;
       var cw = c.width;
@@ -263,11 +538,11 @@ var Camera = (function () {
         sy = (ih - (iw * cRatio)) / 2;
         ih = iw * cRatio;
       }
-      ctx.drawImage(i, sx, sy, iw, ih, 0, 0, cw, ch);
+      this.ctx.drawImage(i, sx, sy, iw, ih, 0, 0, cw, ch);
     }
 
     buttonTrigger(ele, callback) {
-      if (this.camType != 0 && this.camType != jpgCam && this.camType != imgStreamCam) {
+      if (this.camType != 0 && this.camType != jpgCam && this.camType != imgStreamCam && this.camType != videoStreamCam && this.camType != channel) {
         var btn = document.createElement("BUTTON");
         btn.setAttribute("style", "background-color: #e0f0e0;position: fixed;z-index:2;top:5px;left:5px;font-size:96px");
         document.getElementsByTagName("body")[0].append(btn);
@@ -286,7 +561,14 @@ var Camera = (function () {
       }
     }
 
-    upload(url) {
+    upload(url, cb) {
+      if (typeof cb == 'undefined')
+        cb = function () {}
+      this.drawTime();
+      if (this.getImageFailure) {
+        console.log("upload cancel...");
+        return;
+      }
       this.canvas.toBlob(
         function (blob) {
           var fd = new FormData();
@@ -296,9 +578,28 @@ var Camera = (function () {
             mode: 'cors',
             body: fd
           }).then(res => {
-            console.log("upload res:", res.status);
+            cb(res.status);
+            //console.log("upload res:", res.status);
           });
         }, 'image/jpeg');
+    }
+
+    drawTime() {
+      var ctx = this.canvas.getContext('2d');
+      ctx.font = "16px Verdana";
+      ctx.fillStyle = '#ecdc00';
+      var x = ctx.canvas.width - 200;
+      var y = ctx.canvas.height - 4;
+      var date = this.getDate();
+      ctx.fillText(date, x, y);
+      return date;
+    }
+
+    getDate() {
+      var d = new Date();
+      var dy = d.toLocaleDateString();
+      var dt = d.toLocaleTimeString();
+      return dy + ' ' + dt;
     }
   }
   return Camera;
